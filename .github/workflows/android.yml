@@ -2,6 +2,7 @@ name: Native Android game
 on:
   push:
     branches: ['arena/01a07de1-gta']
+    paths: ['game/**', '.github/workflows/android.yml']
   workflow_dispatch:
     inputs:
       release:
@@ -113,6 +114,17 @@ jobs:
           unzip -l artifacts/azure-harbor-test.apk | grep 'libgodot_android.so'
           "$ANDROID_HOME/build-tools/35.0.1/apksigner" verify --verbose artifacts/azure-harbor-test.apk | tee artifacts/signature.txt
           echo 'Native offline prototype. Test APK and test AAB are debug-signed, not Play Store releases. No physical device testing performed by this workflow.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Expose native test diagnostics on failure
+        if: failure()
+        run: |
+          python3 - <<'PYTHON'
+          import pathlib
+          for name in ['import.log', 'tests.log', 'render.log']:
+              path = pathlib.Path('artifacts') / name
+              if path.exists() and ('ERROR' in path.read_text() or 'FAIL:' in path.read_text()):
+                  text = path.read_text()[-3500:]
+                  print('::error title=' + name + '::' + text.replace('%', '%25').replace('\n', '%0A').replace('\r', '%0D'))
+          PYTHON
       - uses: actions/upload-artifact@v4
         if: always()
         with:

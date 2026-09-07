@@ -55,6 +55,7 @@ func _ready() -> void:
 	step_sound = make_audio("res://assets/step.wav", -23)
 	vehicle_sound = make_audio("res://assets/motor.wav", -25)
 	get_tree().auto_accept_quit = false
+	get_tree().quit_on_go_back = false
 
 func make_audio(path: String, volume: float) -> AudioStreamPlayer:
 	var audio := AudioStreamPlayer.new()

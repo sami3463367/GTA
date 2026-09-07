@@ -102,6 +102,30 @@ func run_tests() -> void:
 	scene.health = 0
 	scene.update_game(0.016)
 	check(scene.health == 100 and scene.player == World.START, "health recovery")
+	var steer := InputEventScreenTouch.new()
+	steer.index = 0
+	steer.pressed = true
+	steer.position = Vector2(150, 601) * scene.hud.scale
+	scene.hud._input(steer)
+	var fire := InputEventScreenTouch.new()
+	fire.index = 1
+	fire.pressed = true
+	fire.position = Vector2(1090, 568) * scene.hud.scale
+	scene.hud._input(fire)
+	check(scene.stick.x > 0 and scene.fire_held, "independent multitouch steering and firing")
+	fire.pressed = false
+	scene.hud._input(fire)
+	check(not scene.fire_held and scene.stick.x > 0, "releasing fire preserves steering")
+	steer.pressed = false
+	scene.hud._input(steer)
+	check(scene.stick == Vector2.ZERO, "joystick release clears movement")
+	scene.paused = true
+	var resume := InputEventScreenTouch.new()
+	resume.index = 0
+	resume.pressed = true
+	resume.position = Vector2(180, 455) * scene.hud.scale
+	scene.hud._input(resume)
+	check(not scene.paused, "native touch menu resumes game")
 	var file := FileAccess.open(World.SAVE_PATH, FileAccess.WRITE)
 	file.store_string('{"version":1,"chapter":"bad"}')
 	file.close()

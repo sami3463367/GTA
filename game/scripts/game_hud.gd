@@ -5,6 +5,7 @@ var font: Font = ThemeDB.fallback_font
 var controls: Array[Button] = []
 var menu_controls: Array[Button] = []
 var joystick_id := -1
+var fire_touch_id := -1
 var joystick_center := Vector2(108, 601)
 var reset_pending := false
 var pause_button: Button
@@ -86,10 +87,30 @@ func _process(_delta: float) -> void:
 	menu_controls[0].text = "RESUME YOUR STORY   >" if game.clock > 1 else "ENTER AZURE HARBOR   >"
 	menu_controls[1].text = "CONFIRM RESET" if reset_pending else "NEW STORY"
 	if game.paused:
+		fire_touch_id = -1
 		joystick_id = -1
 		game.stick = Vector2.ZERO
 
 func _input(event: InputEvent) -> void:
+	# Handle each real touch independently: steering and firing must work together.
+	# Mouse emulation is disabled in project settings to avoid duplicate actions.
+	if event is InputEventScreenTouch:
+		if not event.pressed and event.index == fire_touch_id:
+			fire_touch_id = -1
+			game.fire_held = false
+		if event.pressed:
+			var active_buttons: Array[Button] = menu_controls if game.paused else controls + [pause_button]
+			var point: Vector2 = event.position / scale
+			for b in active_buttons:
+				if Rect2(b.position, b.size).has_point(point):
+					if b.text == "FIRE":
+						fire_touch_id = event.index
+						game.fire_held = true
+						game.shoot()
+					else:
+						b.pressed.emit()
+					get_viewport().set_input_as_handled()
+					return
 	if game.paused:
 		return
 	if event is InputEventScreenTouch:
