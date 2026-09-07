@@ -1,0 +1,11 @@
+.godot/
+**/android/build/
+**/android/.build_version
+artifacts/
+*.apk
+*.aab
+*.jks
+*.keystore
+.env
+node_modules/
+test-results/

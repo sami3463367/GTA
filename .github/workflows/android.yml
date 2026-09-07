@@ -1,0 +1,105 @@
+name: Native Android game
+on:
+  push:
+    branches: ['arena/01a07de1-gta']
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Export a release-signed AAB (requires upload-key secrets)'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: native-android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GODOT_VERSION: '4.5.1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Godot and native Android export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/godot" "$HOME/.local/share/godot/export_templates/4.5.1.stable" artifacts
+          curl --fail --location --retry 3 -o /tmp/godot.zip "https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d "$HOME/godot"
+          mv "$HOME/godot/Godot_v4.5.1-stable_linux.x86_64" "$HOME/godot/godot"
+          chmod +x "$HOME/godot/godot"
+          echo "$HOME/godot" >> "$GITHUB_PATH"
+          curl --fail --location --retry 3 -o /tmp/templates.tpz "https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_export_templates.tpz"
+          unzip -j -q /tmp/templates.tpz 'templates/android*' -d "$HOME/.local/share/godot/export_templates/4.5.1.stable"
+          mkdir -p game/android/build
+          unzip -q "$HOME/.local/share/godot/export_templates/4.5.1.stable/android_source.zip" -d game/android/build
+          echo '4.5.1.stable' > game/android/.build_version
+          chmod +x game/android/build/gradlew
+      - name: Configure Android SDK and test signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.1' 'platform-tools' 'ndk;28.1.13356709'
+          mkdir -p "$HOME/.android" "$HOME/.config/godot"
+          keytool -genkeypair -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -dname 'CN=Android Debug,O=Android,C=US' -keyalg RSA -keysize 2048 -validity 10000
+          cat > "$HOME/.config/godot/editor_settings-4.5.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$HOME/.android/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+      - name: Import and parse native project
+        run: |
+          set -o pipefail
+          godot --headless --path game --editor --import 2>&1 | tee artifacts/import.log
+          ! grep -E 'SCRIPT ERROR|Parse Error|Failed to load script' artifacts/import.log
+      - name: Run native gameplay regression tests
+        run: |
+          set -o pipefail
+          godot --headless --path game --script res://tests/test_game.gd 2>&1 | tee artifacts/tests.log
+          ! grep -E 'SCRIPT ERROR|FAIL:' artifacts/tests.log
+      - name: Export installable test APK
+        run: godot --headless --path game --export-debug 'Android APK' ../artifacts/azure-harbor-test.apk
+      - name: Export test AAB (debug-signed, NOT for Play upload)
+        if: ${{ !inputs.release }}
+        run: godot --headless --path game --export-debug 'Android AAB' ../artifacts/azure-harbor-test.aab
+      - name: Export release-signed AAB
+        if: ${{ inputs.release }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.ANDROID_KEY_ALIAS }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64" && test -n "$GODOT_ANDROID_KEYSTORE_RELEASE_USER" && test -n "$GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD" || { echo 'Missing release-signing secrets'; exit 1; }
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$RUNNER_TEMP/upload.jks"
+          godot --headless --path game --export-release 'Android AAB' ../artifacts/azure-harbor-release.aab
+      - name: Verify APK is native, offline and Android 10+
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.1/aapt" dump badging artifacts/azure-harbor-test.apk | tee artifacts/apk-info.txt
+          "$ANDROID_HOME/build-tools/35.0.1/aapt" dump permissions artifacts/azure-harbor-test.apk | tee artifacts/permissions.txt
+          ! grep -E 'android.permission.(INTERNET|ACCESS_NETWORK_STATE)' artifacts/permissions.txt
+          grep "sdkVersion:'29'" artifacts/apk-info.txt
+          unzip -l artifacts/azure-harbor-test.apk | grep 'libgodot_android.so'
+          "$ANDROID_HOME/build-tools/35.0.1/apksigner" verify --verbose artifacts/azure-harbor-test.apk | tee artifacts/signature.txt
+          echo 'Native offline prototype. Test APK and test AAB are debug-signed, not Play Store releases. No physical device testing performed by this workflow.' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: azure-harbor-native-android
+          path: artifacts/
+          if-no-files-found: warn
+      - name: Remove release key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
