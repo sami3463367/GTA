@@ -41,6 +41,8 @@ godot --headless --path game --editor --import
 godot --headless --path game --script res://tests/test_game.gd
 ```
 
+The workflow also renders native menu, city, interior and rooftop screenshots under Xvfb and includes them in the build artifacts.
+
 Native tests cover world collision, entrances, all four objectives, vehicle boarding/exiting, unsafe exits/landings, rooftop elevation, elevator use, combat, health recovery, save/load and corrupt saves. They exercise systems directly, not physical touchscreen playthroughs.
 
 ## Android packages
@@ -48,9 +50,10 @@ Native tests cover world collision, entrances, all four objectives, vehicle boar
 The `Native Android game` GitHub Actions workflow runs on `arena/01a07de1-gta` and can also be manually dispatched. It installs Godot, Android export templates, JDK 17 and the Android SDK, tests the project, exports APK/AAB files, verifies the APK signature/minimum SDK/native engine and checks that internet permissions are absent.
 
 - **Android 10+**: minimum SDK 29, target SDK 35 (check current Play requirements before submitting).
-- **ARM64 and x86_64** native libraries; landscape orientation; Compatibility renderer.
+- **ARMv7, ARM64 and x86_64** native libraries; landscape orientation; Compatibility renderer.
 - `azure-harbor-test.apk`: debug-signed, installable for testing, **not a production release**.
 - `azure-harbor-test.aab`: debug-signed bundle for packaging validation, **not accepted as a Play production upload**.
+- Test signing keys are generated per workflow run. Installing a later test build may require uninstalling the older build first, which clears local saves. Production updates require a stable release key.
 - AAB files are not directly installable; use the APK for phone testing.
 - Download successful artifacts from the repository's Actions page. A workflow definition alone does not mean an export has succeeded; consult the run and logs.
 
