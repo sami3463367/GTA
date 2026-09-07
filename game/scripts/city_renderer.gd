@@ -5,9 +5,56 @@ var game: Node2D
 var font: Font = ThemeDB.fallback_font
 var base := Transform2D.IDENTITY
 var visible_area := Rect2()
+var art: Dictionary = {}
+var ocean: Polygon2D
+var water_material: ShaderMaterial
+var grading: ColorRect
+
+func _ready() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+	for key in ["asphalt", "grass", "paving", "roof", "wood", "tiles", "palm", "coupe", "player", "npc0", "npc1", "npc2", "speedboat", "helicopter"]:
+		art[key] = load("res://assets/art/%s.png" % key)
+	ocean = Polygon2D.new()
+	ocean.polygon = PackedVector2Array([Vector2(2240, 0), Vector2(3000, 0), Vector2(3000, 2600), Vector2(2240, 2600)])
+	ocean.z_index = -1
+	water_material = ShaderMaterial.new()
+	water_material.shader = preload("res://shaders/coastal_water.gdshader")
+	ocean.material = water_material
+	add_child(ocean)
+	var layer := CanvasLayer.new()
+	layer.layer = 1
+	add_child(layer)
+	grading = ColorRect.new()
+	grading.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var grade := ShaderMaterial.new()
+	grade.shader = preload("res://shaders/coastal_grade.gdshader")
+	grading.material = grade
+	layer.add_child(grading)
+
+func texture_box(key: String, p: Vector2, size: Vector2, tint := Color.WHITE) -> void:
+	var area := Rect2(p, size).intersection(visible_area)
+	if area.has_area():
+		draw_texture_rect_region(art[key], area, Rect2(area.position * 2.0, area.size * 2.0), tint, false, false)
+
+func projected_shadow(rect: Rect2, offset: Vector2, opacity := 0.22) -> void:
+	# Layered projected silhouettes provide a cheap soft penumbra on mobile GLES.
+	var passes := 4 if game.graphics_high else 1
+	for i in range(passes):
+		var r := rect.grow(float(i) * 1.5)
+		var a := r.position
+		var b := r.position + Vector2(r.size.x, 0)
+		var c := r.end
+		var d := r.position + Vector2(0, r.size.y)
+		draw_colored_polygon(PackedVector2Array([a, b, b + offset, c + offset, d + offset, d]), Color(0.07, 0.13, 0.24, opacity / passes))
+
 
 func box(p: Vector2, size: Vector2, color: String) -> void:
-	draw_rect(Rect2(p, size), Color(color))
+	var textured := {"a5b49e": "grass", "7d9f77": "grass", "8aab80": "grass", "ccd0ba": "paving", "c6c3a4": "paving", "4a6269": "asphalt", "b39c76": "wood", "c6b393": "wood"}
+	if textured.has(color):
+		texture_box(textured[color], p, size)
+	else:
+		draw_rect(Rect2(p, size), Color(color))
 
 func label(value: String, p: Vector2, size := 12, color := "dce4d5") -> void:
 	var w := font.get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
@@ -22,6 +69,12 @@ func _draw() -> void:
 		zoom = minf(screen.x / 790, screen.y / 570)
 	base = Transform2D(0, Vector2.ONE * zoom, 0, screen / 2 - game.camera * zoom)
 	draw_set_transform_matrix(base)
+	ocean.transform = base
+	ocean.visible = game.room < 0
+	water_material.set_shader_parameter("game_time", game.clock)
+	water_material.set_shader_parameter("high_quality", game.graphics_high)
+	grading.size = screen
+	grading.visible = game.graphics_high
 	visible_area = Rect2(game.camera - screen / zoom / 2 - Vector2(100, 100), screen / zoom + Vector2(200, 200))
 	if game.room >= 0:
 		draw_room()
@@ -29,18 +82,12 @@ func _draw() -> void:
 		draw_city()
 	for shot in game.bullets:
 		if shot.room == game.room and shot.roof == game.rooftop:
-			draw_line(shot.pos, shot.pos - Vector2.from_angle(shot.angle) * 15, Color("fff1a5"), 3, true)
+			draw_line(shot.pos - Vector2(0, 15), shot.pos - Vector2.from_angle(shot.angle) * 15 - Vector2(0, 15), Color("fff1a5"), 3, true)
 	if game.gun_cooldown > 0.18:
-		draw_circle(game.player + Vector2.from_angle(game.heading) * 24, 7, Color("f5cb6b"))
+		draw_circle(game.player - Vector2(0, 15) + Vector2.from_angle(game.heading) * 24, 7, Color("f5cb6b"))
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 
 func draw_city() -> void:
-	box(Vector2.ZERO, World.SIZE, "287582")
-	for y in range(0, 2600, 65):
-		for x in range(2260, 3000, 90):
-			if visible_area.has_point(Vector2(x, y)):
-				var sway: float = sin(game.clock * 1.4 + y) * 6
-				draw_line(Vector2(x + sway, y), Vector2(x + 28 + sway, y), Color("74b7b235"), 2, true)
 	box(Vector2.ZERO, Vector2(World.COAST, 2600), "a5b49e")
 	for x in range(80, 2240, 420):
 		box(Vector2(x - 50, 0), Vector2(100, 2600), "ccd0ba")
@@ -67,6 +114,9 @@ func draw_city() -> void:
 	box(Vector2(2240, 2060), Vector2(240, 4), "e1d5b2")
 	box(Vector2(2240, 2136), Vector2(240, 4), "e1d5b2")
 	draw_park()
+	for block in game.blocks:
+		if visible_area.intersects(block.rect.grow(90)):
+			projected_shadow(block.rect, Vector2(40, 57) + Vector2(0, block.id % 3 * 8), 0.27)
 	for block in game.blocks:
 		if visible_area.intersects(block.rect):
 			draw_building(block)
@@ -123,24 +173,31 @@ func draw_park() -> void:
 func palm(p: Vector2, size := 1.0) -> void:
 	if not visible_area.has_point(p):
 		return
-	draw_circle(p + Vector2(9, 11), 23 * size, Color("14352d25"))
-	draw_line(p, p + Vector2(5, -9) * size, Color("8e8060"), 5 * size)
-	for i in range(7):
-		var a := i * TAU / 7
-		var points := PackedVector2Array([p, p + Vector2(14, -10).rotated(a) * size, p + Vector2(34, 0).rotated(a) * size, p + Vector2(14, -2).rotated(a) * size])
-		draw_colored_polygon(points, Color("4b806b") if i % 2 == 0 else Color("609673"))
-	draw_circle(p, 4 * size, Color("98ab71"))
+	var extent := Vector2(91, 91) * size
+	var sway: float = sin(game.clock * 1.4 + p.x * 0.012) * 0.035 if game.graphics_high else 0.0
+	# Ground projection and trunk stay fixed; only the leafy canopy sways.
+	draw_texture_rect(art["palm"], Rect2(p - extent / 2 + Vector2(16, 24) * size, extent), false, Color(0.06, 0.12, 0.23, 0.22))
+	draw_line(p + Vector2(3, 9), p + Vector2(0, -12), Color("765636"), 6 * size, true)
+	draw_line(p + Vector2(1, 8), p + Vector2(-2, -12), Color("c39b61"), 2 * size, true)
+	draw_set_transform_matrix(base * Transform2D(sway, p + Vector2(0, -12)))
+	draw_texture_rect(art["palm"], Rect2(-extent / 2, extent), false)
+	draw_set_transform_matrix(base)
 
 func planter(p: Vector2) -> void:
 	box(p - Vector2(20, 10), Vector2(40, 20), "d9cfb1")
 	box(p - Vector2(17, 7), Vector2(34, 14), "4c6d53")
 	for i in range(4):
-		draw_circle(p + Vector2(-12 + i * 8, 0), 6, Color("7f9b69"))
+		draw_circle(p + Vector2(-12 + i * 8, 0), 6, Color("65a747"))
+
+	for i in range(5):
+		var bloom := p + Vector2(-13 + i * 6, sin(float(i) * 4 + p.x) * 5)
+		draw_circle(bloom + Vector2(1, 1), 3, Color("365132"))
+		draw_circle(bloom, 2.4, [Color("f95d85"), Color("ffd361"), Color("c18af0")][i % 3])
 
 func draw_building(b: Dictionary) -> void:
 	var p: Vector2 = b.rect.position
 	var size: Vector2 = b.rect.size
-	var color: String = ["cbbda3", "adbfb7", "c8bba5", "a1b8be"][b.id % 4]
+	var color: String = ["e7b383", "71bba9", "e48f78", "81afd0"][b.id % 4]
 	box(p + Vector2(17, 22), size, "17303844")
 	box(p - Vector2(5, 5), size + Vector2(10, 15), "9aa79b")
 	box(p + Vector2(0, 12), size, color)
@@ -149,9 +206,12 @@ func draw_building(b: Dictionary) -> void:
 	box(p, size - Vector2(0, 8), "e2d8c2")
 	box(p + Vector2(9, 9), size - Vector2(18, 27), color)
 	box(p + Vector2(17, 17), size - Vector2(34, 43), "778e87")
-	box(p + Vector2(22, 22), size - Vector2(44, 53), "8da99d")
-	for y in range(32, 220, 40):
-		draw_line(p + Vector2(22, y), p + Vector2(248, y), Color("a1b5a4"))
+	texture_box("tiles" if b.id % 4 == 3 and not b.helipad else "roof", p + Vector2(22, 22), size - Vector2(44, 53))
+	# Ambient contact shading at the parapet, crisp sun-facing top and left edges.
+	for inset in range(4):
+		draw_rect(Rect2(p + Vector2(19 + inset, 19 + inset), size - Vector2(38 + inset * 2, 47 + inset * 2)), Color(0.14, 0.19, 0.25, 0.13 - inset * 0.025), false, 2)
+	draw_line(p, p + Vector2(size.x, 0), Color("fff0ce"), 3, true)
+	draw_line(p, p + Vector2(0, size.y - 8), Color("fff0ce"), 2, true)
 	if b.helipad:
 		draw_circle(p + Vector2(135, 130), 79, Color("526f6b"))
 		draw_arc(p + Vector2(135, 130), 66, 0, TAU, 64, Color("dae0ae"), 3, true)
@@ -166,9 +226,14 @@ func draw_building(b: Dictionary) -> void:
 		label("MERIDIAN SKY GARDEN", p + Vector2(135, 229), 10, "e8e5c7")
 	elif b.id % 5 == 0:
 		box(p + Vector2(47, 50), Vector2(170, 100), "e0d7b9")
-		box(p + Vector2(54, 57), Vector2(156, 86), "4e9ba8")
+		box(p + Vector2(54, 57), Vector2(156, 86), "21abbd")
 		for y in range(64, 140, 15):
-			draw_line(p + Vector2(58, y), p + Vector2(206, y), Color("97c9c66b"), 2)
+			draw_line(p + Vector2(58, y), p + Vector2(206, y), Color("bafae29a"), 2)
+		for i in range(8):
+			var pool_y: float = 65 + i * 9
+			for j in range(6):
+				var pool_x: float = 62 + j * 24
+				draw_arc(p + Vector2(pool_x, pool_y), 9 + sin(game.clock + i) * 2, 0.1, 2.6, 8, Color("c2fce76b"), 1, true)
 		for x in [65, 110, 155, 200]:
 			box(p + Vector2(x, 170), Vector2(19, 32), "e5d5b0")
 			box(p + Vector2(x + 2, 172), Vector2(15, 8), "bc9875")
@@ -191,10 +256,18 @@ func draw_building(b: Dictionary) -> void:
 		draw_line(p + Vector2(145, 137), p + Vector2(145, 183), Color("c0a47b"))
 		for x in [112, 160]:
 			box(p + Vector2(x, 187), Vector2(22, 10), "ddd6b9")
+	box(p + Vector2(0, 252), Vector2(270, 18), color)
+	for x in range(12, 265, 26):
+		box(p + Vector2(x, 255), Vector2(16, 12), "354c64")
+		box(p + Vector2(x + 2, 256), Vector2(12, 4), "86c9d2")
+		draw_line(p + Vector2(x + 7, 255), p + Vector2(x + 7, 267), Color("e6d5b4"), 1)
 	box(p + Vector2(40, 239), Vector2(190, 20), "304e51")
 	label(b.name, p + Vector2(135, 253), 10, "e4dcc0")
 	if b.interior:
-		box(p + Vector2(115, 260), Vector2(40, 10), "dce7a4")
+		projected_shadow(Rect2(p + Vector2(102, 259), Vector2(66, 13)), Vector2(5, 8), 0.25)
+		for i in range(6):
+			box(p + Vector2(102 + i * 11, 259), Vector2(11, 13), "fff0cd" if i % 2 == 0 else "e76665")
+		box(p + Vector2(106, 272), Vector2(58, 3), "563c4277")
 		draw_circle(b.door, 14, Color("dceda13a"))
 		label("E", b.door + Vector2(0, 5), 13, "edf0c1")
 
@@ -204,36 +277,22 @@ func draw_vehicle(v: Dictionary) -> void:
 	var transform := Transform2D(float(v.angle), Vector2(v.pos))
 	draw_set_transform_matrix(base * transform)
 	if v.kind == "car":
-		box(Vector2(-20, -6), Vector2(50, 25), "112b3544")
-		for x in [-19, 10]:
-			box(Vector2(x, -16), Vector2(11, 4), "20343b")
-			box(Vector2(x, 12), Vector2(11, 4), "20343b")
-		draw_rect(Rect2(-25, -12, 50, 24), v.color)
-		box(Vector2(-14, -10), Vector2(26, 20), "365663")
-		draw_rect(Rect2(-8, -10, 15, 20), v.color)
-		for y in [-10, 5]:
-			box(Vector2(23, y), Vector2(3, 5), "fff0b7")
-			box(Vector2(-25, y), Vector2(3, 5), "cc6254")
+		draw_texture_rect(art["coupe"], Rect2(-28, -12, 66, 33), false, Color(0.05, 0.11, 0.19, 0.30))
+		draw_texture_rect(art["coupe"], Rect2(-32, -16, 64, 32), false, v.color.lightened(0.12))
 		if v.get("police", false):
 			box(Vector2(-3, -10), Vector2(6, 10), "5b9fe0" if sin(game.clock * 12) > 0 else "b7c8ce")
 			box(Vector2(-3, 0), Vector2(6, 10), "e5675c" if sin(game.clock * 12) < 0 else "b7c8ce")
 	elif v.kind == "boat":
-		if game.boarded >= 0 and game.fleet[game.boarded] == v:
+		if game.boarded >= 0 and game.fleet[game.boarded] == v and game.player_moving:
 			draw_colored_polygon(PackedVector2Array([Vector2(-25, -12), Vector2(-90, -32), Vector2(-66, 0), Vector2(-90, 32), Vector2(-25, 12)]), Color("b7e6df66"))
-		draw_colored_polygon(PackedVector2Array([Vector2(45, 0), Vector2(18, -18), Vector2(-35, -17), Vector2(-35, 17), Vector2(18, 18)]), v.color)
-		box(Vector2(-25, -11), Vector2(40, 22), "a99272")
-		box(Vector2(8, -12), Vector2(10, 24), "426d7b")
-		box(Vector2(-19, -7), Vector2(15, 14), "f0e4c5")
-		box(Vector2(-43, -7), Vector2(9, 14), "243f4a")
+		draw_texture_rect(art["speedboat"], Rect2(-46, -23, 92, 46), false)
 	else:
-		draw_circle(Vector2(20, 22), 40, Color("102b3544"))
-		box(Vector2(-55, -4), Vector2(45, 8), "acb9a9")
-		box(Vector2(-50, -15), Vector2(6, 30), "d7dfca")
-		for y in [-22, 19]:
-			box(Vector2(-22, y), Vector2(48, 3), "29464c")
-		draw_style_box(capsule(v.color), Rect2(-30, -15, 62, 30))
-		box(Vector2(13, -11), Vector2(12, 22), "36616e")
-		var spin: float = game.clock * (28 if v.flying else 1)
+		draw_texture_rect(art["helicopter"], Rect2(-65, -15, 119, 67), false, Color(0.03, 0.11, 0.20, 0.25))
+		draw_texture_rect(art["helicopter"], Rect2(-82, -33.5, 119, 67), false)
+		if v.flying:
+			draw_circle(Vector2.ZERO, 59, Color("1d41491a"))
+			draw_arc(Vector2.ZERO, 57, 0, TAU, 48, Color("a5c4ba25"), 3, true)
+		var spin: float = game.clock * 28 if v.flying else 0.0
 		draw_set_transform_matrix(base * transform * Transform2D(spin, Vector2.ZERO))
 		box(Vector2(-59, -3), Vector2(118, 6), "2c4b4ccd")
 		box(Vector2(-3, -59), Vector2(6, 118), "2c4b4ccd")
@@ -249,22 +308,25 @@ func capsule(color: Color) -> StyleBoxFlat:
 func draw_person(p: Vector2, angle: float, color: Color, is_player: bool) -> void:
 	if not visible_area.has_point(p):
 		return
-	draw_set_transform_matrix(base * Transform2D(angle, p))
-	draw_circle(Vector2(3, 4), 9, Color("203a4044"))
-	var gait: float = sin(game.clock * (13 if is_player else 7)) * 2
-	box(Vector2(-7, -7 + gait), Vector2(7, 5), "293e48")
-	box(Vector2(-7, 2 - gait), Vector2(7, 5), "293e48")
-	draw_rect(Rect2(-5, -9, 10, 18), color)
-	draw_circle(Vector2(1, 0), 5, Color("c59a76"))
-	box(Vector2(0, -4), Vector2(4, 8), "364747")
-	if is_player:
-		box(Vector2(7, 6), Vector2(12, 3), "24373b")
+	# Upright eight-direction characters, feet anchored to gameplay/collision position.
+	var direction := int(round(fposmod(angle, TAU) / (TAU / 8))) % 8
+	var moving: bool = game.player_moving if is_player else not game.paused
+	var frame := int(game.clock * (9 if is_player else 5)) % 4 if moving else 0
+	var key := "player" if is_player else "npc%d" % (int(color.r * 255) % 3)
+	draw_set_transform_matrix(base * Transform2D(0, Vector2(1.0, 0.43), 0, p + Vector2(6, 3)))
+	draw_circle(Vector2.ZERO, 13, Color("152a4645"))
 	draw_set_transform_matrix(base)
+	draw_texture_rect_region(art[key], Rect2(p - Vector2(16, 36.5), Vector2(32, 40)), Rect2(frame * 128, direction * 160, 128, 160))
+	if is_player:
+		var hand := p + Vector2(0, -15)
+		var muzzle := hand + Vector2.from_angle(angle) * 17
+		draw_line(hand, muzzle, Color("202c3c"), 3, true)
+		draw_line(hand + Vector2(-1, -1), muzzle + Vector2(-1, -1), Color("8b9ba4"), 1, true)
 
 func draw_room() -> void:
 	box(Vector2(-2000, -2000), Vector2(5000, 5000), "122b35")
 	box(Vector2(43, 68), Vector2(620, 450), "203638")
-	box(Vector2(50, 75), Vector2(600, 430), "c6b393")
+	texture_box("wood", Vector2(50, 75), Vector2(600, 430), Color("edce9d"))
 	for x in range(50, 650, 35):
 		draw_line(Vector2(x, 75), Vector2(x, 505), Color("ad9a7d"))
 	box(Vector2(50, 75), Vector2(600, 25), "e6d9be")

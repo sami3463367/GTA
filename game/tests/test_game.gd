@@ -126,6 +126,15 @@ func run_tests() -> void:
 	resume.position = Vector2(180, 455) * scene.hud.scale
 	scene.hud._input(resume)
 	check(not scene.paused, "native touch menu resumes game")
+	check(scene.renderer.art.size() == 14, "all bundled graphics textures loaded")
+	check(scene.renderer.art["player"].get_size() == Vector2(512, 1280), "eight-direction character animation atlas")
+	check(scene.renderer.water_material.shader != null and scene.renderer.grading.material != null, "native water and grade shaders assigned")
+	scene.graphics_high = false
+	scene.save_game()
+	scene.graphics_high = true
+	scene.load_game()
+	check(not scene.graphics_high, "graphics preference survives offline save/load")
+	scene.graphics_high = true
 	var file := FileAccess.open(World.SAVE_PATH, FileAccess.WRITE)
 	file.store_string('{"version":1,"chapter":"bad"}')
 	file.close()

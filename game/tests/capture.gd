@@ -27,6 +27,22 @@ func capture_views() -> void:
 	game.renderer.queue_redraw()
 	game.hud.queue_redraw()
 	await capture("native-city")
+	var high_pixels := root.get_texture().get_image().get_data()
+	game.graphics_high = false
+	game.renderer.queue_redraw()
+	await capture("native-city-lite")
+	if high_pixels == root.get_texture().get_image().get_data():
+		push_error("High and Lite should render differently; graphics shader not applied.")
+		quit(1)
+		return
+	game.graphics_high = true
+	game.clock = 2.0
+	game.renderer.queue_redraw()
+	await capture("native-water-animated")
+	if high_pixels == root.get_texture().get_image().get_data():
+		push_error("Animated city frame did not change.")
+		quit(1)
+		return
 	game.player = Vector2(1955, 2102)
 	game.interact()
 	game.camera = Vector2(350, 300)

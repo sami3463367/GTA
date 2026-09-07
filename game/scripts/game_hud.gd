@@ -10,6 +10,7 @@ var joystick_center := Vector2(108, 601)
 var reset_pending := false
 var pause_button: Button
 var sound_button: Button
+var graphics_button: Button
 
 func panel(rect: Rect2, color := "122a32ee", border := "ffffff20", radius := 8) -> void:
 	var style := StyleBoxFlat.new()
@@ -75,6 +76,9 @@ func _ready() -> void:
 	))
 	sound_button = button("SOUND: ON", Rect2(268, 501, 170, 45), func(): game.sound_enabled = not game.sound_enabled; game.save_game())
 	menu_controls.append(sound_button)
+	graphics_button = button("GFX: HIGH", Rect2(453, 501, 78, 45), func(): game.graphics_high = not game.graphics_high; game.save_game())
+	graphics_button.add_theme_font_size_override("font_size", 11)
+	menu_controls.append(graphics_button)
 
 func _process(_delta: float) -> void:
 	scale = get_viewport_rect().size / Vector2(1280, 720)
@@ -84,6 +88,7 @@ func _process(_delta: float) -> void:
 		b.visible = game.paused
 	pause_button.visible = not game.paused
 	sound_button.text = "SOUND: ON" if game.sound_enabled else "SOUND: OFF"
+	graphics_button.text = "GFX: HIGH" if game.graphics_high else "GFX: LITE"
 	menu_controls[0].text = "RESUME YOUR STORY   >" if game.clock > 1 else "ENTER AZURE HARBOR   >"
 	menu_controls[1].text = "CONFIRM RESET" if reset_pending else "NEW STORY"
 	if game.paused:
@@ -244,4 +249,4 @@ func draw_menu() -> void:
 	text("AZURE", Vector2(832, 463), 69)
 	text("HARBOR", Vector2(832, 529), 69, "dcee9d")
 	text("THE COAST IS CALLING.", Vector2(838, 565), 14, "c8d8c5")
-	text("DEVELOPMENT BUILD 0.2 / NOT A FINISHED RELEASE", Vector2(794, 663), 10, "b9ccbd")
+	text("COASTAL GRAPHICS UPDATE 0.3 / DEVELOPMENT BUILD", Vector2(794, 663), 10, "b9ccbd")

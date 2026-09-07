@@ -29,6 +29,8 @@ var step_clock := 0.0
 var notice := "Welcome to Azure Harbor. A new city. An old friend."
 var notice_time := 0.0
 var sound_enabled := true
+var graphics_high := true
+var player_moving := false
 var police := {"kind": "car", "pos": Vector2(2180, 1760), "angle": 0.0, "color": Color("e0e7de"), "flying": false, "police": true}
 var renderer: Node2D
 var hud: Node2D
@@ -47,6 +49,7 @@ func _ready() -> void:
 	renderer.game = self
 	add_child(renderer)
 	var layer := CanvasLayer.new()
+	layer.layer = 2
 	add_child(layer)
 	hud = Hud.new()
 	hud.game = self
@@ -126,6 +129,7 @@ func update_game(dt: float) -> void:
 	movement.x += float(Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT)) - float(Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT))
 	movement.y += float(Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN)) - float(Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP))
 	movement = movement.limit_length()
+	player_moving = movement.length() > 0.08
 	var speed := 175.0 if sprint or Input.is_physical_key_pressed(KEY_SHIFT) else 110.0
 	if boarded >= 0:
 		speed = {"car": 300.0, "boat": 250.0, "helicopter": 360.0}[fleet[boarded].kind]
@@ -366,7 +370,7 @@ func save_game() -> bool:
 	var safe := player
 	if room >= 0 or rooftop >= 0 or not World.can_move(safe, "foot", blocks):
 		safe = World.START
-	var data := {"version": 1, "chapter": chapter, "cash": cash, "health": health, "x": safe.x, "y": safe.y, "sound": sound_enabled}
+	var data := {"version": 1, "chapter": chapter, "cash": cash, "health": health, "x": safe.x, "y": safe.y, "sound": sound_enabled, "graphics_high": graphics_high}
 	var temporary := World.SAVE_PATH + ".tmp"
 	var file := FileAccess.open(temporary, FileAccess.WRITE)
 	if file == null:
@@ -396,6 +400,7 @@ func load_game() -> void:
 	if World.can_move(point, "foot", blocks):
 		player = point
 	sound_enabled = data.get("sound", true) == true
+	graphics_high = data.get("graphics_high", true) == true
 
 func reset_story() -> void:
 	player = World.START
