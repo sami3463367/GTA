@@ -99,7 +99,10 @@ func _input(event: InputEvent) -> void:
 			fire_touch_id = -1
 			game.fire_held = false
 		if event.pressed:
-			var active_buttons: Array[Button] = menu_controls if game.paused else controls + [pause_button]
+			var active_buttons: Array[Button] = []
+			active_buttons.assign(menu_controls if game.paused else controls)
+			if not game.paused:
+				active_buttons.append(pause_button)
 			var point: Vector2 = event.position / scale
 			for b in active_buttons:
 				if Rect2(b.position, b.size).has_point(point):

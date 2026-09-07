@@ -80,3 +80,5 @@ Release signing does **not** make this prototype ready for store publication. Be
 - `.github/workflows/android.yml`: native export and verification pipeline.
 
 All names, map layouts, visuals and sound assets in this repository are original project material. No GTA branding, characters, maps, music or extracted game assets are used.
+
+Godot and its bundled third-party component notices are included in `game/assets/GODOT_LICENSE.txt` and `game/assets/GODOT_COPYRIGHT.txt`, and are bundled into the Android exports.
