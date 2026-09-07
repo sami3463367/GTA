@@ -21,7 +21,7 @@ jobs:
       GODOT_VERSION: '4.5.1'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -46,7 +46,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sdkmanager 'platforms;android-35' 'build-tools;35.0.1' 'platform-tools' 'ndk;28.1.13356709'
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.1' 'build-tools;35.0.0' 'platform-tools' 'ndk;28.1.13356709'
           mkdir -p "$HOME/.android" "$HOME/.config/godot"
           keytool -genkeypair -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -dname 'CN=Android Debug,O=Android,C=US' -keyalg RSA -keysize 2048 -validity 10000
           cat > "$HOME/.config/godot/editor_settings-4.5.tres" <<EOF
@@ -69,10 +69,24 @@ jobs:
           godot --headless --path game --script res://tests/test_game.gd 2>&1 | tee artifacts/tests.log
           ! grep -E 'SCRIPT ERROR|FAIL:' artifacts/tests.log
       - name: Export installable test APK
-        run: godot --headless --path game --export-debug 'Android APK' ../artifacts/azure-harbor-test.apk
+        run: |
+          set +e
+          godot --headless --path game --export-debug 'Android APK' ../artifacts/azure-harbor-test.apk 2>&1 | tee artifacts/apk-export.log
+          result=${PIPESTATUS[0]}
+          if [ "$result" -ne 0 ]; then
+            tail -35 artifacts/apk-export.log | while IFS= read -r line; do echo "::error::$line"; done
+          fi
+          exit "$result"
       - name: Export test AAB (debug-signed, NOT for Play upload)
         if: ${{ !inputs.release }}
-        run: godot --headless --path game --export-debug 'Android AAB' ../artifacts/azure-harbor-test.aab
+        run: |
+          set +e
+          godot --headless --path game --export-debug 'Android AAB' ../artifacts/azure-harbor-test.aab 2>&1 | tee artifacts/aab-export.log
+          result=${PIPESTATUS[0]}
+          if [ "$result" -ne 0 ]; then
+            tail -45 artifacts/aab-export.log | while IFS= read -r line; do echo "::error::$line"; done
+          fi
+          exit "$result"
       - name: Export release-signed AAB
         if: ${{ inputs.release }}
         env:
