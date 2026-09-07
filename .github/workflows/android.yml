@@ -10,7 +10,7 @@ on:
         type: boolean
         default: false
 permissions:
-  contents: read
+  contents: write # Publish only native-rendered documentation screenshots to this session branch.
 concurrency:
   group: native-android-${{ github.ref }}
   cancel-in-progress: true
@@ -114,6 +114,25 @@ jobs:
           unzip -l artifacts/azure-harbor-test.apk | grep 'libgodot_android.so'
           "$ANDROID_HOME/build-tools/35.0.1/apksigner" verify --verbose artifacts/azure-harbor-test.apk | tee artifacts/signature.txt
           echo 'Native offline prototype. Test APK and test AAB are debug-signed, not Play Store releases. No physical device testing performed by this workflow.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish native rendered previews for visual review
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/arena/01a07de1-gta' }}
+        run: |
+          set -euo pipefail
+          git fetch origin arena/01a07de1-gta
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse FETCH_HEAD)" ]; then
+            echo 'A newer change exists; not publishing stale previews.'
+            exit 0
+          fi
+          mkdir -p docs/screenshots
+          cp artifacts/native-city.png artifacts/native-rooftop.png artifacts/native-interior.png artifacts/native-city-lite.png docs/screenshots/
+          printf 'Native Godot render captures from source commit `%s`.\n\nThese are engine-rendered desktop smoke-test images, not concept art or physical Android device screenshots. APK and AAB use the same scene, textures and shaders.\n' "$GITHUB_SHA" > docs/screenshots/README.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/screenshots
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update native engine-rendered graphics previews [skip ci]'
+            git push origin HEAD:arena/01a07de1-gta
+          fi
       - name: Expose native test diagnostics on failure
         if: failure()
         run: |
