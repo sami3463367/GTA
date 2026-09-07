@@ -159,7 +159,7 @@ for who,shirt in [('player',(246,181,51)),('npc0',(70,174,168)),('npc1',(228,99,
                     d.text((59,74),'8',fill=(94,63,30,255),stroke_width=1)
             sheet.alpha_composite(im,(frame*128,direction*160))
     sheet.save(ROOT/(who+'.png'))
-print('Generated',len(list(ROOT.glob('*.png'))),'original texture/sprite assets.')
+
 
 # Speedboat: layered gunwales, timber deck, upholstered seats and curved glazing.
 im=Image.new('RGBA',(256,128));d=ImageDraw.Draw(im)
@@ -203,3 +203,5 @@ for x in range(143,160,4):d.line((x,74,x,106),fill=(68,101,111,255),width=2)
 d.ellipse((207,71,237,101),fill=(70,95,105,255));d.ellipse((214,78,229,93),fill=(183,197,183,255))
 d.ellipse((159,50,170,61),fill=(220,72,58,255));d.line((179,49,225,49),fill=(255,249,221,255),width=3)
 im.save(ROOT/'helicopter.png')
+
+print('Generated',len(list(ROOT.glob('*.png'))),'original texture/sprite assets.')

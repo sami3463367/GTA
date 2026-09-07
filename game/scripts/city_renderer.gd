@@ -1,6 +1,7 @@
 extends Node2D
 ## Procedural, resolution-independent original city art rendered by Godot.
 const World = preload("res://scripts/world_data.gd")
+const SURFACE_TEXTURES := {"a5b49e": "grass", "7d9f77": "grass", "8aab80": "grass", "ccd0ba": "paving", "c6c3a4": "paving", "4a6269": "asphalt", "b39c76": "wood", "c6b393": "wood"}
 var game: Node2D
 var font: Font = ThemeDB.fallback_font
 var base := Transform2D.IDENTITY
@@ -50,9 +51,8 @@ func projected_shadow(rect: Rect2, offset: Vector2, opacity := 0.22) -> void:
 
 
 func box(p: Vector2, size: Vector2, color: String) -> void:
-	var textured := {"a5b49e": "grass", "7d9f77": "grass", "8aab80": "grass", "ccd0ba": "paving", "c6c3a4": "paving", "4a6269": "asphalt", "b39c76": "wood", "c6b393": "wood"}
-	if textured.has(color):
-		texture_box(textured[color], p, size)
+	if SURFACE_TEXTURES.has(color):
+		texture_box(SURFACE_TEXTURES[color], p, size)
 	else:
 		draw_rect(Rect2(p, size), Color(color))
 
