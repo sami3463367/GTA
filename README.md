@@ -2,20 +2,35 @@
 
 Original top-down 2D open-city **development build**, built with **Godot 4.5.1**. This replaces the abandoned browser/WebView experiment; there is no HTML, JavaScript, WebView, or web server in the game or Android package.
 
-## Download the verified native test build — 0.2.1
+## Download the verified native test build — 0.3.0
 
-[**Download APK + AAB + native screenshots (ZIP, approximately 173 MB)**](https://github.com/sami3463367/GTA/actions/runs/34167262919/artifacts/10034599843)
+[**Download APK + AAB + native screenshots (ZIP, approximately 178 MB)**](https://github.com/sami3463367/GTA/actions/runs/34168753937/artifacts/10035058566)
 
-[Successful build and verification run](https://github.com/sami3463367/GTA/actions/runs/34167262919) · game source commit `baabd2a`.
+[Successful build and verification run](https://github.com/sami3463367/GTA/actions/runs/34168753937) · game source commit `781d677`.
 
 Extract the ZIP and install `azure-harbor-test.apk` on an Android 10+ phone. `azure-harbor-test.aab` is a **debug-signed packaging test, not a Play Store upload**. GitHub may require you to sign in to download build artifacts, and artifacts have limited retention.
 
-Verified by CI: 74 native gameplay checks, native rendered smoke tests, successful APK/AAB exports, APK signature, minimum SDK 29, native Godot libraries, and absence of internet/network-state permissions. **Physical Android device testing and production release signing have not been completed.**
+Verified by CI: 78 native gameplay/graphics checks, native rendered smoke tests, successful APK/AAB exports, APK signature, minimum SDK 29, native Godot libraries, and absence of internet/network-state permissions. **Physical Android device testing and production release signing have not been completed.**
+
+## Graphics upgrade — 0.3.0
+
+![Actual native Godot render of the upgraded city](docs/screenshots/native-city.png)
+
+- 14 bundled original PNG assets: tileable asphalt, grass, paving, roof, terracotta and wood surfaces; shaded coupe, speedboat and helicopter art; palm canopy; four character atlases.
+- Upright eight-direction characters with four gait frames, replacing flat overhead markers.
+- Layered projected building shadows, palm/vehicle silhouettes, rooftop contact shading, recessed facade windows, striped awnings and flower beds.
+- Native GLES-compatible coastal water shader with animated ripples, caustics, shoreline foam and subtle glints.
+- Separate world-only color grading and highlight glow; HUD is drawn afterward and remains unfiltered.
+- **GFX: HIGH / GFX: LITE** in the pause menu. Lite disables the screen-space grading pass, simplifies water and shadows, and stops canopy sway. The setting saves locally.
+
+These are stylized 2D effects, not physically based 3D lighting or ray tracing. Real-phone frame rates and thermal/battery behavior still require device testing. The previews are actual native desktop engine renders, not concept art or Android device captures. [Rooftop preview](docs/screenshots/native-rooftop.png) · [Interior preview](docs/screenshots/native-interior.png).
+
+All texture/sprite PNGs are checked in and shipped offline. To regenerate the original art, install `tools/requirements-art.txt` in a Python virtual environment and run `python tools/generate_art.py`; Python is not needed to build or play the app.
 
 ## Current playable scope
 
 - A coastal city with 28 buildings, streets, crosswalks, palms, a park, fountain and marina.
-- Resolution-independent 2D artwork: rooftop furniture, solar panels, pools, planters and a hotel helipad.
+- Textured 2D artwork: roof tiles, timber decking, paving, grass, asphalt, rooftop furniture, pools, planters and a hotel helipad.
 - Walking/running, touch joystick, keyboard controls, cars, a speedboat and a helicopter.
 - Landing on the hotel roof or park pad; walking on the roof; elevator back to the street.
 - Three accessible interiors (café, market and hotel), with furniture collision and a hotel rooftop elevator.
