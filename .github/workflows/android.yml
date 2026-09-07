@@ -71,7 +71,7 @@ jobs:
       - name: Render native menu, city, interior and rooftop smoke tests
         run: |
           set -o pipefail
-          xvfb-run -a godot --path game --script res://tests/capture.gd 2>&1 | tee artifacts/render.log
+          xvfb-run -a godot --audio-driver Dummy --path game --script res://tests/capture.gd 2>&1 | tee artifacts/render.log
           ! grep -E 'SCRIPT ERROR|ERROR:' artifacts/render.log
       - name: Export installable test APK
         run: |
