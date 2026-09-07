@@ -2,6 +2,16 @@
 
 Original top-down 2D open-city **development build**, built with **Godot 4.5.1**. This replaces the abandoned browser/WebView experiment; there is no HTML, JavaScript, WebView, or web server in the game or Android package.
 
+## Download the verified native test build — 0.2.1
+
+[**Download APK + AAB + native screenshots (ZIP, approximately 173 MB)**](https://github.com/sami3463367/GTA/actions/runs/34167262919/artifacts/10034599843)
+
+[Successful build and verification run](https://github.com/sami3463367/GTA/actions/runs/34167262919) · game source commit `baabd2a`.
+
+Extract the ZIP and install `azure-harbor-test.apk` on an Android 10+ phone. `azure-harbor-test.aab` is a **debug-signed packaging test, not a Play Store upload**. GitHub may require you to sign in to download build artifacts, and artifacts have limited retention.
+
+Verified by CI: 74 native gameplay checks, native rendered smoke tests, successful APK/AAB exports, APK signature, minimum SDK 29, native Godot libraries, and absence of internet/network-state permissions. **Physical Android device testing and production release signing have not been completed.**
+
 ## Current playable scope
 
 - A coastal city with 28 buildings, streets, crosswalks, palms, a park, fountain and marina.
