@@ -128,8 +128,8 @@ func spawn_population() -> void:
 		var top := float(80+(i%4)*420)
 		var route := PackedVector2Array([Vector2(left+16,top+16),Vector2(left+404,top+16),Vector2(left+404,top+404),Vector2(left+16,top+404)])
 		fleet[i].route = route
-		fleet[i].waypoint = i%4
-		fleet[i].pos = route[i%4]
+		fleet[i].waypoint = (i+1)%4
+		fleet[i].pos = route[i%4].lerp(route[(i+1)%4],float(i/4)*0.18)
 		fleet[i].driver = true
 
 func make_audio(path: String,volume: float) -> AudioStreamPlayer:
@@ -400,7 +400,7 @@ func interact() -> void:
 		return
 	var npc:=nearest_npc()
 	if not npc.is_empty():
-		speaker=npc
+		speaker=npc.duplicate(true)
 		dialogue=Narrative.dialogue(npc.id,chapter,branch)
 		dialogue_age=0
 		stick=Vector2.ZERO
@@ -438,7 +438,7 @@ func choose_dialogue(index:int) -> void:
 
 func close_dialogue() -> void:
 	dialogue.clear()
-	speaker.clear()
+	speaker={}
 	stick=Vector2.ZERO
 	fire_held=false
 
