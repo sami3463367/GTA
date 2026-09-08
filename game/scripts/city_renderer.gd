@@ -161,7 +161,7 @@ func build_environment() -> void:
 		roof_sprites.append(roof)
 		# Child props follow roof opacity and never reveal the interior underneath.
 		if b.helipad:
-			placed("helipad",Rect2(Vector2(-87,-92),Vector2(174,174)),roof)
+			placed("helipad",Rect2(Vector2(-87,-97),Vector2(174,174)),roof)
 		var label:=Label.new()
 		label.text=b.name
 		label.position=Vector2(-122,97)
@@ -349,7 +349,7 @@ func sync_visuals(dt:float) -> void:
 		return
 	var screen:=get_viewport_rect().size
 	var zoom:float=screen.x/1280.0*game.camera_zoom
-	var shake_offset:=Vector2(sin(game.clock*77),cos(game.clock*91))*game.shake
+	var shake_offset:Vector2=Vector2(sin(game.clock*77),cos(game.clock*91))*game.shake
 	base=Transform2D(0,Vector2.ONE*zoom,0,screen/2-game.camera*zoom+shake_offset)
 	world_root.transform=base
 	grading.size=screen
@@ -378,7 +378,7 @@ func sync_visuals(dt:float) -> void:
 		var npc:Dictionary=game.cast[i]
 		var visible_value:bool=(npc.building<0) or game.room==game.building_index(npc.building)
 		set_character(cast_sprites[i],npc.pos,PI/2,false,visible_value,npc.building>=0)
-	set_character(player_visual,game.player,game.heading,game.player_moving,game.boarded<0,game.room>=0)
+	set_character(player_visual,game.player,game.heading,game.player_moving or game.transition.get("kind","") in ["board","disembark"],game.boarded<0 or game.transition.get("kind","")=="disembark",game.room>=0)
 	for i in range(fleet_sprites.size()):
 		var v:Dictionary=game.fleet[i]
 		var pair:Dictionary=fleet_sprites[i]

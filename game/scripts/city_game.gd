@@ -393,6 +393,14 @@ func nearest_npc() -> Dictionary:
 				return npc
 	return {}
 
+func nearby_vending() -> Dictionary:
+	if room<0:
+		return {}
+	for prop in Rooms.props(blocks[room].id):
+		if prop.art=="vending" and player.distance_to(blocks[room].rect.position+prop.rect.get_center())<58:
+			return prop
+	return {}
+
 func interact() -> void:
 	if paused or not transition.is_empty():
 		return
@@ -405,6 +413,16 @@ func interact() -> void:
 		dialogue_age=0
 		stick=Vector2.ZERO
 		fire_held=false
+		return
+	if not nearby_vending().is_empty():
+		if health>=100:
+			notify("You're already feeling good.")
+		elif cash<15:
+			notify("A drink costs $15.")
+		else:
+			cash-=15
+			health=minf(100,health+25)
+			notify("Cold drink · +25 health")
 		return
 	if room>=0:
 		if player.distance_to(blocks[room].rect.position+Vector2(135,242))<58:
@@ -575,7 +593,7 @@ func update_people(dt:float) -> void:
 				if npc.hp<35 or (distance<250 and int(clock)%6<2):
 					target=navigation.cover(npc.pos,player)
 					npc.state="cover"
-			elif wanted>0.5 and distance<200:
+			elif not npc.hostile and wanted>0.5 and distance<200:
 				npc.state="flee"
 				target=npc.pos+(npc.pos-player).normalized()*300
 			else:

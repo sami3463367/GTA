@@ -1,5 +1,6 @@
 extends Node2D
 ## Custom textured HUD and hit-tested native touch UI. No default Buttons or ProgressBars.
+const World=preload("res://scripts/world_data.gd")
 var game:Node2D
 var art:Dictionary
 var font:Font=preload("res://assets/fonts/HarborSans.ttf")
@@ -233,6 +234,8 @@ func draw_context() -> void:
 	var npc:Dictionary=game.nearest_npc()
 	if not npc.is_empty():
 		prompt="Talk to %s  [E / Touch]"%npc.name.split(" ")[0].capitalize()
+	elif not game.nearby_vending().is_empty():
+		prompt="Vending machine · Drink $15 [E / Talk]"
 	elif game.room>=0:
 		prompt="Walk to the south doorway to leave" if not game.blocks[game.room].helipad else "Talk nearby · L / LAND: rooftop elevator"
 	elif game.rooftop>=0 and game.boarded<0:
