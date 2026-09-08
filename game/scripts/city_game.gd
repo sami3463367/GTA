@@ -40,6 +40,7 @@ var gun_cooldown := 0.0
 var reload_timer := 0.0
 var save_clock := 0.0
 var effect_clock := 0.0
+var steering_load := 0.0
 var notice := "Welcome home. Find Mara at the marina cafe."
 var notice_time := 0.0
 var sound_enabled := true
@@ -252,13 +253,15 @@ func update_game(dt: float) -> void:
 		if boarded>=0:
 			fleet[boarded].pos=player
 			fleet[boarded].angle=heading
+			steering_load+=absf(angle_difference(old_heading,heading))
 			effect_clock+=dt
 			if effect_clock>0.16:
 				effect_clock=0
 				var kind:String=fleet[boarded].kind
 				emit_effect("ripple" if kind=="boat" else "smoke",player-Vector2.from_angle(heading)*29,heading+PI)
-				if kind=="car" and absf(angle_difference(old_heading,heading))>0.06:
+				if kind=="car" and steering_load>0.12:
 					decals.append({"kind":"skid","pos":player,"angle":heading,"life":28.0,"room":-1})
+				steering_load=0
 		else:
 			effect_clock+=dt
 			if effect_clock>0.32 and sound_enabled:

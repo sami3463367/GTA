@@ -136,17 +136,24 @@ func build_environment() -> void:
 		for side in [-43,39]:
 			repeating("curb",Rect2(x+side,0,4,2600),-6)
 		for y in range(0,2600,128):
-			var lane:=placed("lane",Rect2(x-16,y,32,128))
+			var lane:=sprite("lane",Vector2(x+16,y))
+			lane.centered=false
+			lane.region_enabled=true
+			lane.region_rect=Rect2(0,0,minf(128,2600-y),32)
 			lane.rotation=PI/2
 			lane.z_index=-5
 	for y in range(80,2600,420):
 		for side in [-43,39]:
 			repeating("curb",Rect2(0,y+side,2240,4),-6)
 		for x in range(0,2240,128):
-			placed("lane",Rect2(x,y-16,128,32)).z_index=-5
+			var lane:=sprite("lane",Vector2(x,y-16))
+			lane.centered=false
+			lane.region_enabled=true
+			lane.region_rect=Rect2(0,0,minf(128,2240-x),32)
+			lane.z_index=-5
 		for x in range(80,2240,420):
 			placed("crosswalk",Rect2(x-34,y+35,68,24)).z_index=-4
-			var crossing:=placed("crosswalk",Rect2(x+25,y-34,68,24))
+			var crossing:=sprite("crosswalk",Vector2(x+48,y),Vector2(0.85,0.75))
 			crossing.rotation=PI/2
 			crossing.z_index=-4
 	for i in range(game.blocks.size()):
@@ -159,6 +166,7 @@ func build_environment() -> void:
 		var roof:=placed("building_%d"%(b.id%4),Rect2(p,Vector2(270,280)))
 		roof.name="OpaqueRoof_%d"%b.id
 		roof.z_index=1
+		roof.light_mask=2
 		roof_sprites.append(roof)
 		# Child props follow roof opacity and never reveal the interior underneath.
 		if b.helipad:
@@ -248,19 +256,24 @@ func make_light(texture:String,energy:float) -> PointLight2D:
 	light.texture_scale=0.8
 	light.height=25
 	light.shadow_filter=Light2D.SHADOW_FILTER_PCF5
+	light.shadow_filter_smooth=2.0
 	world_root.add_child(light)
 	return light
 
 func build_lighting() -> void:
 	for i in range(12):
-		light_pool.append(make_light("light",1.0))
+		var light:=make_light("light",1.0)
+		light.range_item_cull_mask=3
+		light_pool.append(light)
 	for i in range(2):
 		var light:=make_light("beam",1.3)
 		light.offset=Vector2(100,0)
+		light.range_item_cull_mask=3
 		headlamps.append(light)
 	for i in range(3):
 		var light:=make_light("light",1.1)
 		light.color=Color("ffdcab")
+		light.texture_scale=1.1
 		indoor_lights.append(light)
 	muzzle_light=make_light("light",2.0)
 	muzzle_light.color=Color("ffd68a")
@@ -275,6 +288,15 @@ func build_lighting() -> void:
 		world_root.add_child(occluder)
 		occluders.append(occluder)
 		if b.interior:
+			var wall_edges:=[[Vector2(12,12),Vector2(258,12)],[Vector2(12,12),Vector2(12,248)],[Vector2(258,12),Vector2(258,248)],[Vector2(12,248),Vector2(113,248)],[Vector2(156,248),Vector2(258,248)]]
+			for edge in wall_edges:
+				var wall_shape:=OccluderPolygon2D.new()
+				wall_shape.closed=false
+				wall_shape.polygon=PackedVector2Array([b.rect.position+edge[0],b.rect.position+edge[1]])
+				var wall_occluder:=LightOccluder2D.new()
+				wall_occluder.occluder=wall_shape
+				world_root.add_child(wall_occluder)
+				indoor_occluders.append({"node":wall_occluder,"building":game.building_index(b.id)})
 			for local_rect in Rooms.blockers(b.id):
 				var r2:Rect2=Rect2(b.rect.position+local_rect.position,local_rect.size)
 				var poly:=OccluderPolygon2D.new()
@@ -287,8 +309,10 @@ func build_lighting() -> void:
 func update_lights() -> void:
 	var daylight:=clampf((cos(game.clock/180.0*TAU)+1.0)/2.0,0,1)
 	ambient.color=Color("263952").lerp(Color("f8efd8"),daylight)
-	if game.room>=0:
-		ambient.color=Color("6a6868")
+	var indoor_tint:=Color.WHITE.lerp(Color("b8b8b8"),daylight)
+	floor_layer.self_modulate=indoor_tint
+	for item in inside_sprites:
+		item.node.self_modulate=indoor_tint
 	water_material.set_shader_parameter("ambient_level",lerpf(0.24,1.0,daylight))
 	var nearby:Array[Vector2]=[]
 	for p in street_lamps:
@@ -297,7 +321,7 @@ func update_lights() -> void:
 	nearby.sort_custom(func(a:Vector2,b:Vector2):return a.distance_squared_to(game.camera)<b.distance_squared_to(game.camera))
 	for i in range(light_pool.size()):
 		var light:=light_pool[i]
-		light.visible=i<nearby.size() and game.room<0 and daylight<0.7
+		light.visible=i<nearby.size() and daylight<0.7
 		if light.visible:
 			light.position=nearby[i]
 			light.energy=lerpf(1.25,0.35,daylight)
