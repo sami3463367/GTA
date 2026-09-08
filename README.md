@@ -1,109 +1,104 @@
-# Azure Harbor — native offline Android game
+# Azure Harbor — native Android + shared Godot preview
 
-Original top-down 2D open-city **development build**, built with **Godot 4.5.1**. This replaces the abandoned browser/WebView experiment; there is no HTML, JavaScript, WebView, or web server in the game or Android package.
+An original, stylized 2D coastal open-city **development build**, made with **Godot 4.5.1**. Android is a native, offline game—not a WebView. The browser preview is a separate WebAssembly export of the **same Godot scene, GDScript, assets and shaders**; there is no second JavaScript gameplay implementation.
 
-## Download the verified native test build — 0.3.0
+## Verified test build — 0.4.0
 
-[**Download APK + AAB + native screenshots (ZIP, approximately 178 MB)**](https://github.com/sami3463367/GTA/actions/runs/34168753937/artifacts/10035058566)
+[**Download APK + AAB + rendered screenshots (ZIP)**](https://github.com/sami3463367/GTA/actions/runs/34190325189/artifacts/10042035985)
 
-[Successful build and verification run](https://github.com/sami3463367/GTA/actions/runs/34168753937) · game source commit `781d677`.
+[Successful verification run](https://github.com/sami3463367/GTA/actions/runs/34190325189) · game source `50b1482`.
 
-Extract the ZIP and install `azure-harbor-test.apk` on an Android 10+ phone. `azure-harbor-test.aab` is a **debug-signed packaging test, not a Play Store upload**. GitHub may require you to sign in to download build artifacts, and artifacts have limited retention.
+Extract and install `azure-harbor-test.apk` on Android 10+. The AAB is a **debug-signed packaging test, not a Play Store release**. GitHub may require sign-in; artifacts expire. Test signing keys change between builds, so installing a newer APK may require uninstalling the old one, which clears local saves.
 
-Verified by CI: 78 native gameplay/graphics checks, native rendered smoke tests, successful APK/AAB exports, APK signature, minimum SDK 29, native Godot libraries, and absence of internet/network-state permissions. **Physical Android device testing and production release signing have not been completed.**
+**Verification:** 135 native regression checks; native scene captures; actual WebAssembly boot/input and browser-console smoke checks; successful APK/AAB exports; APK signature, minimum SDK 29, native engine libraries, and absence of internet/network-state permissions. These checks do not substitute for physical Android device, performance, thermal, accessibility or lifecycle testing.
 
-## Graphics upgrade — 0.3.0
-
-![Actual native Godot render of the upgraded city](docs/screenshots/native-city.png)
-
-- 14 bundled original PNG assets: tileable asphalt, grass, paving, roof, terracotta and wood surfaces; shaded coupe, speedboat and helicopter art; palm canopy; four character atlases.
-- Upright eight-direction characters with four gait frames, replacing flat overhead markers.
-- Layered projected building shadows, palm/vehicle silhouettes, rooftop contact shading, recessed facade windows, striped awnings and flower beds.
-- Native GLES-compatible coastal water shader with animated ripples, caustics, shoreline foam and subtle glints.
-- Separate world-only color grading and highlight glow; HUD is drawn afterward and remains unfiltered.
-- **GFX: HIGH / GFX: LITE** in the pause menu. Lite disables the screen-space grading pass, simplifies water and shadows, and stops canopy sway. The setting saves locally.
-
-These are stylized 2D effects, not physically based 3D lighting or ray tracing. Real-phone frame rates and thermal/battery behavior still require device testing. The previews are actual native desktop engine renders, not concept art or Android device captures. [Rooftop preview](docs/screenshots/native-rooftop.png) · [Interior preview](docs/screenshots/native-interior.png).
-
-All texture/sprite PNGs are checked in and shipped offline. To regenerate the original art, install `tools/requirements-art.txt` in a Python virtual environment and run `python tools/generate_art.py`; Python is not needed to build or play the app.
-
-## Current playable scope
-
-- A coastal city with 28 buildings, streets, crosswalks, palms, a park, fountain and marina.
-- Textured 2D artwork: roof tiles, timber decking, paving, grass, asphalt, rooftop furniture, pools, planters and a hotel helipad.
-- Walking/running, touch joystick, keyboard controls, cars, a speedboat and a helicopter.
-- Landing on the hotel roof or park pad; walking on the roof; elevator back to the street.
-- Three accessible interiors (café, market and hotel), with furniture collision and a hotel rooftop elevator.
-- Wandering pedestrians, basic gunfire, civilian reactions, wanted level, simple police pursuit and health recovery.
-- Four introductory objectives, rewards and free roam afterward.
-- Original generated sound effects, sound toggle, pause menu and local atomic JSON saves.
-- Fully bundled assets. No accounts, servers, advertising, analytics, remote downloads or internet permission.
-
-**This is not a finished GTA-scale game.** Current NPC AI/police logic and animation are basic; most cars are parked, only three buildings have interiors, and there is one short introductory chapter. There is no multiplayer, elaborate life simulation, inventory economy or full campaign. Real Android hardware performance and lifecycle testing remain necessary before release. No claim of zero bugs is made.
-
-## Play / develop
-
-1. Install Godot **4.5.1 stable** (standard edition; no Unity or .NET needed).
-2. Import `game/project.godot` and press F6/F5 to play.
-3. Choose **Enter Azure Harbor**. Follow the gold objective marker.
-
-| Action | Android | Desktop |
-|---|---|---|
-| Move / steer | Left joystick | WASD / arrows |
-| Enter / exit / interact | USE | E |
-| Helicopter land / take off | LAND | L |
-| Hotel lobby rooftop elevator | LAND | L |
-| Fire forward | Hold FIRE | Space |
-| Run | RUN toggle | Shift |
-| Pause | II / Android Back | Escape |
-
-The helicopter starts at Sunset Park, west of the marina. Only the park pad and Meridian Hotel helipad permit landing. From the rooftop, approach the small LIFT structure and USE to descend. Boats can only be exited beside the marina dock or safe land. Saves preserve mission progress, money, health and settings, and restore a safe on-foot location; vehicle positions are currently reset on launch.
-
-## Tests
+## Play the browser preview
 
 ```sh
-godot --headless --path game --editor --import
-godot --headless --path game --script res://tests/test_game.gd
+python3 scripts/serve_preview.py --port 8080
 ```
 
-The workflow also renders native menu, city, interior and rooftop screenshots under Xvfb and includes them in the build artifacts.
+Open the server's browser URL (or the Arena live-preview panel). The server binds to `0.0.0.0`; no client-side localhost service is required. First load downloads approximately 39 MB of engine/game resources. Choose **Enter Azure Harbor**. Landscape orientation is recommended.
 
-Native tests cover world collision, entrances, all four objectives, vehicle boarding/exiting, unsafe exits/landings, rooftop elevation, elevator use, combat, health recovery, save/load and corrupt saves. They exercise systems directly, not physical touchscreen playthroughs.
+`preview/` contains the CI-built export, not a mockup. Changes to GDScript require a fresh Godot export; editing source does not hot-reload the running WebAssembly game. The browser uses its own local storage and does not share Android saves. The Android package needs no web server, account or connection.
 
-## Android packages
+![Actual playable Godot Web export](docs/screenshots/browser-playable.png)
 
-The `Native Android game` GitHub Actions workflow runs on `arena/01a07de1-gta` and can also be manually dispatched. It installs Godot, Android export templates, JDK 17 and the Android SDK, tests the project, exports APK/AAB files, verifies the APK signature/minimum SDK/native engine and checks that internet permissions are absent.
+## Gameplay and visual overhaul
 
-- **Android 10+**: minimum SDK 29, target SDK 35 (check current Play requirements before submitting).
-- **ARMv7, ARM64 and x86_64** native libraries; landscape orientation; Compatibility renderer.
-- `azure-harbor-test.apk`: debug-signed, installable for testing, **not a production release**.
-- `azure-harbor-test.aab`: debug-signed bundle for packaging validation, **not accepted as a Play production upload**.
-- Test signing keys are generated per workflow run. Installing a later test build may require uninstalling the older build first, which clears local saves. Production updates require a stable release key.
-- AAB files are not directly installable; use the APK for phone testing.
-- Download successful artifacts from the repository's Actions page. A workflow definition alone does not mean an export has succeeded; consult the run and logs.
+- **Story and conversations:** Mara, Inez and Rafe have nearby Talk prompts, illustrated portraits, typewriter dialogue and selectable responses. Six objectives lead through a ledger delivery, hotel contact, helicopter rooftop landing, an evidence-delivery choice and a speedboat escape, then free roam. Choices persist and affect dialogue; this is one short chapter, not a large branching campaign.
+- **Quest guidance:** current-objective card, world marker, off-screen directional arrow and map objective/player/hostile markers.
+- **Roof concealment:** all 28 roofs start opaque. Entering an accessible building's door fades only that roof over 0.46 seconds. Its floor, props and characters become visible only for the selected room; leaving restores the roof and hides the room again. Rooftop landing does not open the interior.
+- **Three furnished interiors:** café, Palm Market and Meridian Hotel. Textured floor TileMaps, wall borders/dividers, counters, furniture, rugs, plants, fixtures, window shafts and collision layouts. Vending machines sell a health-restoring drink for $15 when health is below full.
+- **Custom mobile HUD:** circular illustrated avatar, textured segmented health/armor, delayed health-drop animation, damage vignette, ammo/reload slot, dark radar, skinned dialogue/menu/quest panels, glowing joystick and distinct fire/talk/vehicle/sprint/landing icons. Independent movement and fire touches.
+- **Textured exteriors:** asphalt, road paint, crosswalks, curb/paving and grass tiles; opaque concrete/terracotta roofs, HVAC, solar panels, helipad and rooftop furnishings; palms, lamps, bins, barriers and bus stops. Animated shoreline water and world-only grading.
+- **Native lighting and effects:** actual `CanvasModulate`, `PointLight2D` and `LightOccluder2D` nodes, day/night cycle, street lights, vehicle headlights, warm interior lights, wall/furniture shadows and muzzle light. Sprite/contact shadows, skids, exhaust, splashes, muzzle/damage particles, adaptive zoom and camera shake.
+- **Movement and AI:** sidewalk AStar routes, lane-waypoint traffic, civilian fleeing, hostile chase/line-of-sight/cover behavior; guns, armor, ammunition and reloads. Cars, speedboat and helicopter with entry/exit transitions, safe disembark rules, hotel rooftop landing and lift.
+- **Offline saves:** atomic JSON writes, corrupt-data rejection, migration of older chapter progress, saved story/choice flags, money, health/armor, ammunition and settings. Reload restores safe ground on foot; vehicle positions reset.
 
-### Release signing
+![Native interior and dialogue](docs/screenshots/native-dialogue.png)
 
-Configure these **GitHub Actions repository secrets**, not files committed to Git and not credentials pasted into chat:
+[Closed roof](docs/screenshots/native-roof-closed.png) · [Inside](docs/screenshots/native-interior.png) · [Roof restored after exit](docs/screenshots/native-roof-restored.png) · [Night lighting](docs/screenshots/native-night.png) · [Rooftop](docs/screenshots/native-rooftop.png)
 
-- `ANDROID_KEYSTORE_BASE64`: base64-encoded upload keystore.
-- `ANDROID_KEY_ALIAS`: upload-key alias.
-- `ANDROID_KEYSTORE_PASSWORD`: store/key password (Godot expects the same password for both).
+These are actual engine renders, not concept art or physical Android screenshots. The art direction remains stylized 2D, not photorealistic 3D or ray tracing. Only three buildings are enterable. Traffic/hostile AI is a lightweight simulation, not a full city life system; there is no multiplayer, broad inventory economy or full-length campaign. No claim of zero bugs or store readiness is made.
 
-Run the workflow manually with `release = true` to export `azure-harbor-release.aab`. Keep a secure backup of the upload key. Missing secrets fail the release job; there is no silent fallback to a debug-signed release.
+## Controls
 
-Release signing does **not** make this prototype ready for store publication. Before publishing: finish/polish the planned gameplay, test on real Android 10+ devices (including airplane mode, interruptions, various aspect ratios and 16 KB page-size devices), verify the latest Play target-API rules, choose a permanent package ID, prepare original store artwork, complete privacy/data-safety and violence/content-rating declarations, and complete required Play testing/review.
+| Action | Touch | Keyboard |
+|---|---|---|
+| Move / steer | Left joystick | WASD / arrows |
+| Talk / door / interact | Speech-bubble icon | E |
+| Enter / exit vehicle | Vehicle icon | F |
+| Helicopter landing / takeoff; hotel lift | Landing icon | L |
+| Fire forward | Hold gun icon | Space |
+| Reload | Tap ammo slot | R |
+| Sprint | Sprint toggle | Shift |
+| Dialogue choices | Tap response | 1 / 2 / 3 |
+| Close dialogue / pause | Dialogue response / pause icon / Android Back | Escape |
 
-## Source organization
+Approach the café door near the starting car, enter and talk to Mara. Accept a response to advance the quest—walking into a room no longer completes it automatically. The helicopter is in Sunset Park; landing is allowed at the park pad or Meridian Hotel roof. Use the roof lift to return to the street. The marina boat can only be exited near safe shore/dock access, not in open water.
 
-- `game/scripts/city_game.gd`: gameplay, mission progression, persistence and audio.
-- `game/scripts/world_data.gd`: deterministic geometry and world rules.
-- `game/scripts/city_renderer.gd`: original procedural 2D city art.
-- `game/scripts/game_hud.gd`: native Godot UI and touch input.
-- `game/tests/test_game.gd`: headless native regression tests.
-- `game/assets/`: original icon and locally generated sound effects.
-- `.github/workflows/android.yml`: native export and verification pipeline.
+## Develop and test
 
-All names, map layouts, visuals and sound assets in this repository are original project material. No GTA branding, characters, maps, music or extracted game assets are used.
+Import `game/project.godot` in Godot **4.5.1 stable**, standard edition, then run the project. The pause menu offers High/Lite graphics and sound settings. Lite reduces shadow and post-processing work; real-phone frame rates still need measurement.
 
-Godot and its bundled third-party component notices are included in `game/assets/GODOT_LICENSE.txt` and `game/assets/GODOT_COPYRIGHT.txt`, and are bundled into the Android exports.
+```sh
+python3 scripts/check_art_standard.py
+godot --headless --path game --editor --import
+godot --headless --path game --script res://tests/test_game.gd
+# Requires a graphics/display context, or Xvfb on Linux:
+godot --path game --script res://tests/capture.gd
+# Export templates must be installed:
+godot --headless --path game --export-release "Web Preview" ../preview/index.html
+```
+
+The regression suite covers roofs/hidden rooms, dialogue branches and the complete story/rewards, collision, lights and TileMaps, vehicles/unsafe exits/rooftops, combat/armor/ammo, traffic/hostile states, save/load/corruption, settings and independent touch input. These are direct system tests, not a human touchscreen playthrough. The capture script restores an existing save after normal completion; back up important profiles before running developer tools.
+
+The workflow renders ten native scenarios, exports the browser version, exercises it in Chromium, then exports and verifies Android packages. It publishes the checked browser export and selected screenshots to this session branch only when the build succeeds. Art-standards checks are a baseline lint gate, not a replacement for visual review. See [mandatory visual and interaction standards](docs/DESIGN_STANDARD.md).
+
+## Assets and source
+
+70 bundled authored PNG textures/sprites/UI skins, including the original surface and actor kit. Regenerate using a Python environment with `tools/requirements-art.txt`: run `tools/generate_art.py`, then `tools/generate_polish.py`. The latter also generates the explicit export-safe texture registry. Python is not needed to build or play the game.
+
+- `game/scripts/city_game.gd`: gameplay, transitions, combat and persistence.
+- `world_data.gd`, `interior_data.gd`: city geometry and authored room layouts.
+- `narrative.gd`, `city_navigation.gd`: quests/dialogue and routing/cover.
+- `city_renderer.gd`, `game/shaders/`: TileMaps, sprites, roofs, native lights and effects.
+- `game_hud.gd`: custom textured UI and touch handling.
+- `game/tests/`: regression tests and native render captures.
+- `game/web_shell.html`: branded loading shell around the exported Godot canvas.
+- `scripts/serve_preview.py`, `scripts/browser_smoke.cjs`: preview hosting and browser checks.
+- `.github/workflows/android.yml`: shared-project test/export pipeline.
+
+Map, story, character names, sprite/texture art and sounds are original project material. No GTA characters, maps, music or extracted assets are used. Bundled DejaVu fonts retain their license in `game/assets/fonts/LICENSE.txt`; Godot/component notices are in `game/assets/GODOT_LICENSE.txt` and `GODOT_COPYRIGHT.txt`.
+
+## Android and Play release requirements
+
+- Native Android 10+ (minimum SDK 29), target SDK 35; check current Play requirements before submission.
+- ARMv7, ARM64 and x86_64; landscape; Compatibility renderer.
+- APK: installable test build. AAB: packaging test, not directly installable and not production-signed.
+- No accounts, ads, analytics, remote asset downloads or Android internet permissions.
+
+For production signing, configure GitHub repository secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS` and `ANDROID_KEYSTORE_PASSWORD` securely in GitHub—not in chat or tracked files. The workflow's `release = true` path requires these secrets and fails rather than silently substituting a debug key. Preserve the upload key for future updates.
+
+Before publishing, complete gameplay/device QA (including airplane mode, interruptions, aspect ratios and 16 KB page-size devices), performance testing, current target-API compliance, permanent package identity, signing, original store artwork, privacy/data-safety declarations, content rating and Play testing/review. A successful test export does not establish Play Store readiness.
