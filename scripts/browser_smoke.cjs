@@ -1,0 +1,22 @@
+const { chromium } = require('playwright');
+const fs=require('node:fs');
+(async()=>{
+ const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const page=await browser.newPage({viewport:{width:1280,height:720}});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('favicon'))errors.push(m.text());});
+ await page.goto('http://127.0.0.1:8080/',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>document.body.dataset.gameReady==='true',{},{timeout:120000});
+ await page.waitForTimeout(3000);
+ await page.screenshot({path:'artifacts/browser-menu.png'});
+ await page.mouse.click(320,353);
+ await page.waitForTimeout(1200);
+ await page.keyboard.down('d');await page.waitForTimeout(550);await page.keyboard.up('d');
+ await page.screenshot({path:'artifacts/browser-playable.png'});
+ const wasm=await page.request.get('http://127.0.0.1:8080/index.wasm');
+ if(!wasm.ok()||!wasm.headers()['content-type'].includes('application/wasm'))throw new Error('WASM preview response invalid');
+ await browser.close();
+ if(errors.length)throw new Error(errors.join('\n'));
+ fs.writeFileSync('artifacts/browser-check.txt','PASS: same Godot Web game boots, receives keyboard/mouse input, renders and serves WebAssembly with correct MIME. No browser runtime errors.\n');
+ console.log('Godot browser preview smoke test passed.');
+})().catch(e=>{console.error(e);process.exit(1)});

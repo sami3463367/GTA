@@ -2,6 +2,7 @@ shader_type canvas_item;
 render_mode unshaded;
 // World-space coordinates keep the coastline and ripples anchored when the camera moves.
 uniform float game_time = 0.0;
+uniform float ambient_level = 1.0;
 uniform bool high_quality = true;
 varying vec2 world_position;
 void vertex() { world_position = VERTEX; }
@@ -27,5 +28,5 @@ void fragment() {
     float shore = exp(-max(p.x - 2240.0, 0.0) * 0.055);
     float foam = smoothstep(0.46, 0.87, sin(p.y * 0.05 + t * 1.4) * 0.25 + cos((p.x - 2240.0) * 0.45 - t * 2.0) * 0.65);
     water = mix(water, vec3(0.80, 0.98, 0.88), shore * (0.28 + foam * 0.56));
-    COLOR = vec4(water, 1.0);
+    COLOR = vec4(water * ambient_level, 1.0);
 }

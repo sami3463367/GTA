@@ -2,7 +2,7 @@ name: Native Android game
 on:
   push:
     branches: ['arena/01a07de1-gta']
-    paths: ['game/**', '.github/workflows/android.yml']
+    paths: ['game/**', 'scripts/**', '.github/workflows/android.yml']
   workflow_dispatch:
     inputs:
       release:
@@ -31,14 +31,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$HOME/godot" "$HOME/.local/share/godot/export_templates/4.5.1.stable" artifacts
+          mkdir -p "$HOME/godot" "$HOME/.local/share/godot/export_templates/4.5.1.stable" artifacts preview
           curl --fail --location --retry 3 -o /tmp/godot.zip "https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip"
           unzip -q /tmp/godot.zip -d "$HOME/godot"
           mv "$HOME/godot/Godot_v4.5.1-stable_linux.x86_64" "$HOME/godot/godot"
           chmod +x "$HOME/godot/godot"
           echo "$HOME/godot" >> "$GITHUB_PATH"
           curl --fail --location --retry 3 -o /tmp/templates.tpz "https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_export_templates.tpz"
-          unzip -j -q /tmp/templates.tpz 'templates/android*' -d "$HOME/.local/share/godot/export_templates/4.5.1.stable"
+          unzip -j -q /tmp/templates.tpz 'templates/android*' 'templates/web*' -d "$HOME/.local/share/godot/export_templates/4.5.1.stable"
           mkdir -p game/android/build
           unzip -q "$HOME/.local/share/godot/export_templates/4.5.1.stable/android_source.zip" -d game/android/build
           echo '4.5.1.stable' > game/android/.build_version
@@ -59,6 +59,8 @@ jobs:
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
           EOF
+      - name: Enforce asset and UI standards
+        run: python3 scripts/check_art_standard.py
       - name: Import and parse native project
         run: |
           set -o pipefail
@@ -74,6 +76,18 @@ jobs:
           set -o pipefail
           xvfb-run -a godot --audio-driver Dummy --path game --script res://tests/capture.gd 2>&1 | tee artifacts/render.log
           ! grep -E 'SCRIPT ERROR|ERROR:' artifacts/render.log
+      - name: Export shared Godot browser preview
+        run: |
+          set -o pipefail
+          godot --headless --path game --export-release 'Web Preview' ../preview/index.html 2>&1 | tee artifacts/web-export.log
+      - name: Test playable WebAssembly preview
+        run: |
+          set -euo pipefail
+          npm install --prefix /tmp/harbor-browser playwright
+          python3 scripts/serve_preview.py > /tmp/harbor-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          NODE_PATH=/tmp/harbor-browser/node_modules node scripts/browser_smoke.cjs 2>&1 | tee artifacts/browser.log
       - name: Export installable test APK
         run: |
           set +e
@@ -124,11 +138,12 @@ jobs:
             exit 0
           fi
           mkdir -p docs/screenshots
+          cp artifacts/native-dialogue.png artifacts/native-night.png artifacts/native-roof-closed.png artifacts/native-roof-restored.png artifacts/browser-playable.png docs/screenshots/
           cp artifacts/native-city.png artifacts/native-rooftop.png artifacts/native-interior.png artifacts/native-city-lite.png docs/screenshots/
           printf 'Native Godot render captures from source commit `%s`.\n\nThese are engine-rendered desktop smoke-test images, not concept art or physical Android device screenshots. APK and AAB use the same scene, textures and shaders.\n' "$GITHUB_SHA" > docs/screenshots/README.md
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/screenshots
+          git add docs/screenshots preview
           if ! git diff --cached --quiet; then
             git commit -m 'Update native engine-rendered graphics previews [skip ci]'
             git push origin HEAD:arena/01a07de1-gta
@@ -138,7 +153,7 @@ jobs:
         run: |
           python3 - <<'PYTHON'
           import pathlib
-          for name in ['import.log', 'tests.log', 'render.log']:
+          for name in ['import.log', 'tests.log', 'render.log', 'web-export.log', 'browser.log']:
               path = pathlib.Path('artifacts') / name
               if path.exists() and ('ERROR' in path.read_text() or 'FAIL:' in path.read_text()):
                   text = path.read_text()[-3500:]
