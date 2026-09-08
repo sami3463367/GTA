@@ -576,6 +576,10 @@ func update_people(dt:float) -> void:
 			else:
 				continue
 		var aggressive:bool=npc.hostile and wanted>=1 and room<0 and rooftop<0 and not World.is_water(player)
+		if aggressive and npc.state in ["patrol","flee"]:
+			npc.timer=0
+		elif not aggressive and npc.state in ["chase","cover","attack"]:
+			npc.timer=0
 		var distance:float=npc.pos.distance_to(player)
 		if aggressive and distance<280 and navigation.line_clear(npc.pos,player):
 			npc.state="attack"
@@ -695,7 +699,10 @@ func load_game() -> void:
 	if not FileAccess.file_exists(World.SAVE_PATH):
 		return
 	var data=JSON.parse_string(FileAccess.get_file_as_string(World.SAVE_PATH))
-	if not data is Dictionary or data.get("version",0) not in [1,2]:
+	if not data is Dictionary:
+		return
+	var save_version=data.get("version",0)
+	if not (save_version==1 or save_version==2):
 		return
 	for field in ["chapter","cash","health","x","y"]:
 		if not data.get(field) is float and not data.get(field) is int:

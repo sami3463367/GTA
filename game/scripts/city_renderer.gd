@@ -25,6 +25,7 @@ var indoor_lights:Array[PointLight2D]=[]
 var muzzle_light:PointLight2D
 var muzzle_time:=0.0
 var occluders:Array[LightOccluder2D]=[]
+var indoor_occluders:Array[Dictionary]=[]
 var street_lamps:Array[Vector2]=[]
 var particles:Array[CPUParticles2D]=[]
 var decal_visuals:Array[Sprite2D]=[]
@@ -175,6 +176,7 @@ func build_environment() -> void:
 		label.add_theme_constant_override("shadow_offset_y",1)
 		roof.add_child(label)
 		if b.interior:
+			placed("entrance",Rect2(Vector2(-17,113),Vector2(34,42)),roof)
 			var wall:=placed("wall_frame",b.rect)
 			inside_sprites.append({"node":wall,"building":i})
 			for prop in Rooms.props(b.id):
@@ -272,6 +274,15 @@ func build_lighting() -> void:
 		occluder.occluder=shape
 		world_root.add_child(occluder)
 		occluders.append(occluder)
+		if b.interior:
+			for local_rect in Rooms.blockers(b.id):
+				var r2:Rect2=Rect2(b.rect.position+local_rect.position,local_rect.size)
+				var poly:=OccluderPolygon2D.new()
+				poly.polygon=PackedVector2Array([r2.position,r2.position+Vector2(r2.size.x,0),r2.end,r2.position+Vector2(0,r2.size.y)])
+				var prop_occluder:=LightOccluder2D.new()
+				prop_occluder.occluder=poly
+				world_root.add_child(prop_occluder)
+				indoor_occluders.append({"node":prop_occluder,"building":game.building_index(b.id)})
 
 func update_lights() -> void:
 	var daylight:=clampf((cos(game.clock/180.0*TAU)+1.0)/2.0,0,1)
@@ -297,6 +308,7 @@ func update_lights() -> void:
 		if light.visible:
 			light.position=game.blocks[game.room].rect.position+[Vector2(58,46),Vector2(204,46),Vector2(135,185)][i]
 			light.energy=1.0
+			light.shadow_enabled=game.graphics_high and i<2
 	for i in range(headlamps.size()):
 		var light:=headlamps[i]
 		light.visible=game.boarded>=0 and game.fleet[game.boarded].kind=="car" and game.room<0
@@ -305,6 +317,8 @@ func update_lights() -> void:
 			light.rotation=game.heading
 			light.energy=0.65 if daylight>0.7 else 1.4
 			light.shadow_enabled=game.graphics_high
+	for item in indoor_occluders:
+		item.node.visible=game.room==item.building
 	for i in range(occluders.size()):
 		occluders[i].visible=game.room!=i
 

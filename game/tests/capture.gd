@@ -1,6 +1,9 @@
 extends SceneTree
 var game:Node2D
 var output:=""
+var saved:=""
+var had_save:=false
+const SAVE="user://story_v1.json"
 func _initialize() -> void:
 	call_deferred("run")
 func capture(name:String) -> void:
@@ -19,6 +22,9 @@ func settle(seconds:=0.65) -> void:
 func run() -> void:
 	output=ProjectSettings.globalize_path("res://").path_join("../artifacts")
 	DirAccess.make_dir_recursive_absolute(output)
+	had_save=FileAccess.file_exists(SAVE)
+	if had_save:
+		saved=FileAccess.get_file_as_string(SAVE)
 	game=load("res://main.tscn").instantiate()
 	root.add_child(game)
 	game.set_process(false)
@@ -67,6 +73,12 @@ func run() -> void:
 	settle(0.3)
 	game.clock=12
 	await capture("native-rooftop")
+	if had_save:
+		var file:=FileAccess.open(SAVE,FileAccess.WRITE)
+		file.store_string(saved)
+		file.close()
+	else:
+		DirAccess.remove_absolute(SAVE)
 	print("Native UI, interior, roof transition and lighting captures complete.")
 	quit(0)
 func WorldStart() -> Vector2:
